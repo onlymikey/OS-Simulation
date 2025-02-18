@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from Controllers.processes_controller import ProcessController
+from Controllers.lot_controller import LotController
 from tkinter import messagebox
 import uuid
 
@@ -8,7 +9,8 @@ class ProcessesUI:
     def __init__(self, master, app):
         self.master = master
         self.app = app
-        self.processes_controller = ProcessController()  # Inicializar el controlador
+        self.processes_controller = ProcessController()
+        self.lot_controller = LotController()
         self.lot = []  # Lista para almacenar los procesos del lote
         self.lot_size = 0  # Tamaño del lote (cantidad de procesos)
 
@@ -105,6 +107,7 @@ class ProcessesUI:
             self.input2_entry.grid(row=1, column=1, padx=5, pady=5)
 
     def save_data(self):
+        lot_processes = self.lot_processes_spinbox.get()
         program_name = self.program_name_entry.get()
         execution_time = self.execution_time_entry.get()
         program_number = self.program_number_entry.get()
@@ -112,11 +115,11 @@ class ProcessesUI:
         input1 = self.input1_entry.get() if hasattr(self, "input1_entry") else None
         input2 = self.input2_entry.get() if hasattr(self, "input2_entry") else None
 
-        result = self.processes_controller.validate_process_data(
-            self.lot_processes_spinbox.get(), program_name, execution_time, program_number, operation, input1, input2
+        process_response = self.processes_controller.create_process(
+            lot_processes, program_name, execution_time, program_number, operation, input1, input2
         )
 
-        if result['status']:
+        if process_response['status']:
             process = f"{program_name} ({execution_time})"
             self.lot.append(process)
             self.processes_listbox.insert(tk.END, process)
@@ -131,10 +134,15 @@ class ProcessesUI:
 
             self.clear_process_fields()
         else:
-            messagebox.showerror("Error", result['message'])
+            messagebox.showerror("Error", process_response['message'])
 
     def save_lot(self):
-        messagebox.showinfo("Éxito", "Lote guardado con éxito")
+        lot_response = self.lot_controller.create_lot()
+        if lot_response['status']:
+            messagebox.showinfo(lot_response['type'], lot_response['message'])
+            self.cancel_action()
+        else:
+            messagebox.showerror(lot_response['type'], lot_response['message'])
         self.cancel_action()
 
     def cancel_action(self):

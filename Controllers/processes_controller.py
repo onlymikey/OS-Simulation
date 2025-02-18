@@ -1,6 +1,10 @@
 import re
+from Services.processes_service import ProcessesService
 
 class ProcessController:
+    def __init__(self):
+        self.processes_service = ProcessesService()
+
     @staticmethod
     def validate_process_data(lot_processes, program_name, execution_time, program_number, operation, input1=None, input2=None) -> dict:
         """Valida los datos de los procesos"""
@@ -61,4 +65,18 @@ class ProcessController:
         msg['status'] = True
         msg['type'] = 'Success'
         msg['message'] = 'Proceso creado correctamente'
+        return msg
+
+    def create_process(self, lot_processes, program_name, execution_time, program_number, operation, input1, input2) -> dict:
+        """Crea un proceso con los datos proporcionados"""
+        # Validar los datos del proceso
+        msg = self.validate_process_data(lot_processes, program_name, execution_time, program_number, operation, input1, input2)
+        if not msg['status']:
+            return msg
+        if self.processes_service.create_process(program_name, execution_time, program_number, operation, input1, input2):
+            msg['status'] = True
+            msg['type'] = 'Success'
+            msg['message'] = 'Proceso creado exitosamente'
+        else:
+            msg['message'] = 'Error en el servicio de creación de procesos'
         return msg

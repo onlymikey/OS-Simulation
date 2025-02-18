@@ -1,9 +1,21 @@
+from Models.lot_model import Lot
 from Models.processes_model import Process
-# from Logic.processes_logic import ProcessesLogic
+from Services.lot_service import LotService
 
 class ProcessesService:
-        @staticmethod
-        def create_buy(folio: str, user_id: int, iup_supplier: str, total: float, date: str) -> Optional[int]:
-            buy = Buy(folio=folio, user_id=user_id, iup_supplier=iup_supplier, total=total, date=date)
-            return BuyDAO.create_buy(buy)
-
+    @staticmethod
+    def create_process(program_name: str, execution_time: str, program_number: str, operation: str,
+                       input1: float, input2: float, status: str = "En Cola") -> Lot:
+        """
+        Encapsula los parámetros en un objeto Process.
+        """
+        process = Process(
+            program_name=program_name,
+            execution_time=execution_time,
+            program_number=program_number,
+            operation=operation,
+            input1=input1,
+            input2=input2,
+            status=status
+        )
+        return LotService.add_process_to_lot(process)
