@@ -9,6 +9,9 @@ class ProcessesUI:
         self.master = master
         self.app = app
         self.processes_controller = ProcessController()  # Inicializar el controlador
+        self.lot = []  # Lista para almacenar los procesos del lote
+        self.lot_size = 0  # Tamaño del lote (cantidad de procesos)
+
         # Grid configuration
         self.master.columnconfigure(0, weight=1)
         self.master.columnconfigure(1, weight=2)
@@ -57,35 +60,38 @@ class ProcessesUI:
         self.operation_inputs_frame = ttk.Frame(self.master)
         self.operation_inputs_frame.grid(row=5, column=0, columnspan=2, padx=10, pady=10)
 
-        # Buttons for Save and Cancel
-        self.save_button = ttk.Button(self.master, text="Guardar", command=self.save_data)
+        # Listbox to display processes
+        self.processes_list_label = ttk.Label(self.master, text="Lote Actual:")
+        self.processes_list_label.grid(row=0, column=2, padx=10, pady=10, sticky="n")
+        self.processes_listbox = tk.Listbox(self.master, height=10, width=30)
+        self.processes_listbox.grid(row=1, column=2, rowspan=5, padx=10, pady=10, sticky="n")
+
+        # Buttons for Save, Save Lot, and Cancel
+        self.save_button = ttk.Button(self.master, text="Guardar Proceso", command=self.save_data)
         self.save_button.grid(row=6, column=0, padx=10, pady=20, sticky="e")
+
+        self.save_lot_button = ttk.Button(self.master, text="Guardar Lote", command=self.save_lot, state="disabled")
+        self.save_lot_button.grid(row=6, column=2, padx=10, pady=20, sticky="w")
 
         self.cancel_button = ttk.Button(self.master, text="Cancelar", command=self.cancel_action)
         self.cancel_button.grid(row=6, column=1, padx=10, pady=20, sticky="w")
 
     def generate_uuid(self):
-        # Generate a short UUID and insert it into the "Número de programa" field
         short_uuid = str(uuid.uuid4())[:8]  # Take the first 8 characters of the UUID
-        self.program_number_entry.config(state="normal")  # Temporarily enable the entry
+        self.program_number_entry.config(state="normal")
         self.program_number_entry.delete(0, tk.END)
         self.program_number_entry.insert(0, short_uuid)
-        self.program_number_entry.config(state="readonly")  # Disable the entry again
+        self.program_number_entry.config(state="readonly")
 
     def update_operation_fields(self, event=None):
-        # Clear the current inputs in the operation frame
         for widget in self.operation_inputs_frame.winfo_children():
             widget.destroy()
 
-        # Get the selected operation
         operation = self.operation_combobox.get()
-
-        # Create appropriate number of entry fields based on the operation
         if operation in ["Suma", "Resta", "Multiplicación", "División", "Residuo"]:
             ttk.Label(self.operation_inputs_frame, text="Dato 1:").grid(row=0, column=0, padx=5, pady=5)
             self.input1_entry = ttk.Entry(self.operation_inputs_frame)
             self.input1_entry.grid(row=0, column=1, padx=5, pady=5)
-
             ttk.Label(self.operation_inputs_frame, text="Dato 2:").grid(row=1, column=0, padx=5, pady=5)
             self.input2_entry = ttk.Entry(self.operation_inputs_frame)
             self.input2_entry.grid(row=1, column=1, padx=5, pady=5)
@@ -94,14 +100,11 @@ class ProcessesUI:
             ttk.Label(self.operation_inputs_frame, text="Base:").grid(row=0, column=0, padx=5, pady=5)
             self.input1_entry = ttk.Entry(self.operation_inputs_frame)
             self.input1_entry.grid(row=0, column=1, padx=5, pady=5)
-
             ttk.Label(self.operation_inputs_frame, text="Exponente:").grid(row=1, column=0, padx=5, pady=5)
             self.input2_entry = ttk.Entry(self.operation_inputs_frame)
             self.input2_entry.grid(row=1, column=1, padx=5, pady=5)
 
     def save_data(self):
-        # Retrieve data from fields
-        lot_processes = self.lot_processes_spinbox.get()
         program_name = self.program_name_entry.get()
         execution_time = self.execution_time_entry.get()
         program_number = self.program_number_entry.get()
@@ -109,19 +112,51 @@ class ProcessesUI:
         input1 = self.input1_entry.get() if hasattr(self, "input1_entry") else None
         input2 = self.input2_entry.get() if hasattr(self, "input2_entry") else None
 
-        # Validate data
-        result = self.processes_controller.validate_process_data(lot_processes, program_name, execution_time, program_number, operation, input1, input2)
+        result = self.processes_controller.validate_process_data(
+            self.lot_processes_spinbox.get(), program_name, execution_time, program_number, operation, input1, input2
+        )
 
         if result['status']:
-            messagebox.showinfo("Éxito", result['message'])
-            self.cancel_action()
+            process = f"{program_name} ({execution_time})"
+            self.lot.append(process)
+            self.processes_listbox.insert(tk.END, process)
+
+            if len(self.lot) == 1:
+                self.lot_processes_spinbox.config(state="disabled")
+                self.lot_size = int(self.lot_processes_spinbox.get())
+
+            if len(self.lot) == self.lot_size:
+                self.save_button.config(state="disabled")
+                self.save_lot_button.config(state="normal")
+
+            self.clear_process_fields()
         else:
             messagebox.showerror("Error", result['message'])
 
+    def save_lot(self):
+        messagebox.showinfo("Éxito", "Lote guardado con éxito")
+        self.cancel_action()
+
     def cancel_action(self):
-        # Clear all fields
+        self.lot = []
+        self.lot_size = 0
+        self.processes_listbox.delete(0, tk.END)
+        self.lot_processes_spinbox.config(state="normal")
         self.lot_processes_spinbox.delete(0, tk.END)
         self.lot_processes_spinbox.insert(0, "1")
+        self.program_name_entry.delete(0, tk.END)
+        self.execution_time_entry.delete(0, tk.END)
+        self.execution_time_entry.insert(0, "00:00")
+        self.program_number_entry.config(state="normal")
+        self.program_number_entry.delete(0, tk.END)
+        self.program_number_entry.config(state="readonly")
+        self.operation_combobox.set("")
+        for widget in self.operation_inputs_frame.winfo_children():
+            widget.destroy()
+        self.save_button.config(state="normal")
+        self.save_lot_button.config(state="disabled")
+
+    def clear_process_fields(self):
         self.program_name_entry.delete(0, tk.END)
         self.execution_time_entry.delete(0, tk.END)
         self.execution_time_entry.insert(0, "00:00")
